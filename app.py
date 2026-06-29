@@ -15,7 +15,7 @@ st.markdown("Built using Streamlit + Pandas + ML Model")
 # ---------------- LOAD DATA ----------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv(r"C:\Users\parip\Desktop\SECOND_PROJECT\WA_Fn-UseC_-HR-Employee-Attrition.csv")
+    df=pd.read_csv("WA_Fn-UseC_-HR-Employee-Attrition.csv")
     return df
 
 df = load_data()
