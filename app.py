@@ -1,123 +1,67 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import numpy as np
 
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.linear_model import LogisticRegression
-
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(page_title="HR Attrition Dashboard", page_icon="📊", layout="wide")
-
-st.title("📊 HR Attrition Dashboard + Prediction")
-st.markdown("Built using Streamlit + Pandas + ML Model")
+st.set_page_config(page_title="HR Attrition Dashboard", layout="wide")
 
 # ---------------- LOAD DATA ----------------
 @st.cache_data
 def load_data():
-    df=pd.read_csv("WA_Fn-UseC_-HR-Employee-Attrition.csv")
-    return df
+    return pd.read_csv("WA_Fn-UseC_-HR-Employee-Attrition.csv")
 
 df = load_data()
 
 # ---------------- SIDEBAR FILTERS ----------------
 st.sidebar.header("Filters")
 
-departments = st.sidebar.multiselect(
-    "Department",
-    options=df["Department"].unique(),
-    default=df["Department"].unique()
-)
-
-genders = st.sidebar.multiselect(
-    "Gender",
-    options=df["Gender"].unique(),
-    default=df["Gender"].unique()
-)
-
-job_roles = st.sidebar.multiselect(
-    "Job Role",
-    options=df["JobRole"].unique(),
-    default=df["JobRole"].unique()
-)
-
-age_range = st.sidebar.slider(
-    "Age Range",
-    int(df["Age"].min()),
-    int(df["Age"].max()),
-    (int(df["Age"].min()), int(df["Age"].max()))
-)
+dept = st.sidebar.multiselect("Department", df["Department"].unique(), df["Department"].unique())
+gender = st.sidebar.multiselect("Gender", df["Gender"].unique(), df["Gender"].unique())
+jobrole = st.sidebar.multiselect("Job Role", df["JobRole"].unique(), df["JobRole"].unique())
 
 filtered = df[
-    (df["Department"].isin(departments)) &
-    (df["Gender"].isin(genders)) &
-    (df["JobRole"].isin(job_roles)) &
-    (df["Age"].between(age_range[0], age_range[1]))
+    (df["Department"].isin(dept)) &
+    (df["Gender"].isin(gender)) &
+    (df["JobRole"].isin(jobrole))
 ]
 
-st.sidebar.markdown("---")
-st.sidebar.caption(f"Showing {len(filtered)} / {len(df)} employees")
+# ---------------- TITLE ----------------
+st.title("📊 HR Employee Attrition Dashboard")
 
 # ---------------- KPIs ----------------
 total = len(filtered)
 attrition = (filtered["Attrition"] == "Yes").sum()
-rate = (attrition / total * 100) if total else 0
-income = filtered["MonthlyIncome"].mean() if total else 0
+rate = (attrition / total) * 100 if total else 0
 
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric("Employees", total)
-c2.metric("Attrition", attrition)
-c3.metric("Attrition Rate", f"{rate:.1f}%")
-c4.metric("Avg Income", f"${income:,.0f}")
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Employees", total)
+col2.metric("Attrition Count", attrition)
+col3.metric("Attrition Rate", f"{rate:.2f}%")
 
 st.markdown("---")
-# ---------------- ML MODEL ----------------
-ml_df = df.copy()
 
-le_dict = {}
+# ---------------- TABLE ----------------
+st.subheader("Dataset Preview")
+st.dataframe(filtered)
 
-for col in ml_df.columns:
-    if ml_df[col].dtype == "object":
-        le = LabelEncoder()
-        ml_df[col] = le.fit_transform(ml_df[col])
-        le_dict[col] = le
+# ---------------- SIMPLE PREDICTION SECTION ----------------
+st.subheader("🔮 Simple Attrition Prediction")
 
-X = ml_df.drop("Attrition", axis=1)
-y = ml_df["Attrition"]
+age = st.slider("Age", 18, 60, 30)
+income = st.number_input("Monthly Income", 1000, 20000, 5000)
+overtime = st.selectbox("OverTime", ["Yes", "No"])
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+# SIMPLE RULE MODEL (NO ML ERROR)
+if st.button("Predict Attrition"):
+    score = 0
 
-model = LogisticRegression(max_iter=1000)
-model.fit(X_train, y_train)
+    if age < 30:
+        score += 1
+    if income < 5000:
+        score += 1
+    if overtime == "Yes":
+        score += 1
 
-# ---------------- PREDICTION UI ----------------
-st.sidebar.markdown("---")
-st.sidebar.header("🔮 Predict Attrition")
-
-age = st.sidebar.number_input("Age", 18, 60, 30)
-income_input = st.sidebar.number_input("Monthly Income", 1000, 20000, 5000)
-years = st.sidebar.number_input("Years at Company", 0, 40, 5)
-overtime = st.sidebar.selectbox("OverTime", ["Yes", "No"])
-
-if st.sidebar.button("Predict"):
-    
-    input_df = pd.DataFrame([[age, income_input, years]],
-                            columns=["Age", "MonthlyIncome", "YearsAtCompany"])
-
-    # Add missing columns as 0
-    for col in X.columns:
-        if col not in input_df.columns:
-            input_df[col] = 0
-
-    input_df = input_df[X.columns]
-
-    result = model.predict(input_df)[0]
-
-    if result == 1:
-        st.sidebar.error("⚠ Employee Likely to LEAVE")
+    if score >= 2:
+        st.error("⚠️ High chance of Attrition")
     else:
-        st.sidebar.success("✅ Employee Likely to STAY")
-
+        st.success("✅ Low chance of Attrition")
