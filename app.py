@@ -72,7 +72,6 @@ c3.metric("Attrition Rate", f"{rate:.1f}%")
 c4.metric("Avg Income", f"${income:,.0f}")
 
 st.markdown("---")
-
 # ---------------- ML MODEL ----------------
 ml_df = df.copy()
 
